@@ -13,8 +13,9 @@ Part of DCC++ BASE STATION for the Arduino
 //
 //  0 = ARDUINO MOTOR SHIELD          (MAX 18V/2A PER CHANNEL)
 //  1 = POLOLU MC33926 MOTOR SHIELD   (MAX 28V/3A PER CHANNEL)
+//  2 = MIC4426 MOSFET DRIVER         (TO DRIVER EXTERNAL BOOSTERS)
 
-#define MOTOR_SHIELD_TYPE   0
+#define MOTOR_SHIELD_TYPE   2
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -30,8 +31,9 @@ Part of DCC++ BASE STATION for the Arduino
 //  1 = Arduino.cc Ethernet/SD-Card Shield
 //  2 = Arduino.org Ethernet/SD-Card Shield
 //  3 = Seeed Studio Ethernet/SD-Card Shield W5200
+//  4 = ESP32 Wifi
 
-#define COMM_INTERFACE   0
+#define COMM_INTERFACE   4
 
 /////////////////////////////////////////////////////////////////////////////////////
 //

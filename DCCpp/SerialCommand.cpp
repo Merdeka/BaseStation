@@ -15,7 +15,7 @@ Part of DCC++ BASE STATION for the Arduino
 // See SerialCommand::parse() below for defined text commands.
 
 #include "SerialCommand.h"
-#include "DCCpp_Uno.h"
+#include "DCCpp.h"
 #include "Accessories.h"
 #include "Sensor.h"
 #include "Outputs.h"
@@ -72,6 +72,23 @@ void SerialCommand::process(){
         sprintf(commandString,"%s%c",commandString,c);     // otherwise, character is ignored (but continue to look for '<' or '>')
       } // while
     }
+
+  #elif COMM_TYPE == 2
+
+    WiFiClient client=INTERFACE.available();
+
+    if(client){
+      while(client.connected() && client.available()){        // while there is data on the network
+      c=client.read();
+      if(c=='<')                    // start of new command
+        sprintf(commandString,"");
+      else if(c=='>')               // end of new command
+        parse(commandString);                    
+      else if(strlen(commandString)<MAX_COMMAND_LENGTH)    // if comandString still has space, append character just read from network
+        sprintf(commandString,"%s%c",commandString,c);     // otherwise, character is ignored (but continue to look for '<' or '>')
+      } // while
+    }
+  
 
   #endif
 
@@ -388,6 +405,9 @@ void SerialCommand::parse(char *com){
       #elif COMM_TYPE == 1
         INTERFACE.print(Ethernet.localIP());
         INTERFACE.print(">");
+      #elif COMM_TYPE == 2
+        INTERFACE.print(WiFi.localIP());
+        INTERFACE.print(">");
       #endif
       
       Turnout::show();
@@ -453,20 +473,23 @@ void SerialCommand::parse(char *com){
 
     Serial.println("\nEntering Diagnostic Mode...");
     delay(1000);
-    
+
+#ifdef AVR    
     bitClear(TCCR1B,CS12);    // set Timer 1 prescale=8 - SLOWS NORMAL SPEED BY FACTOR OF 8
     bitSet(TCCR1B,CS11);
     bitClear(TCCR1B,CS10);
 
-    #ifdef ARDUINO_AVR_UNO      // Configuration for UNO
+    #ifdef ARDUINO_AVR_UNO    // Configuration for UNO
 
       bitSet(TCCR0B,CS02);    // set Timer 0 prescale=256 - SLOWS NORMAL SPEED BY A FACTOR OF 4
       bitClear(TCCR0B,CS01);
       bitClear(TCCR0B,CS00);
+
+    #elif ESP32               // Configuration for ESP32
       
     #else                     // Configuration for MEGA
 
-      bitClear(TCCR3B,CS32);    // set Timer 3 prescale=8 - SLOWS NORMAL SPEED BY A FACTOR OF 8
+      bitClear(TCCR3B,CS32);  // set Timer 3 prescale=8 - SLOWS NORMAL SPEED BY A FACTOR OF 8
       bitSet(TCCR3B,CS31);
       bitClear(TCCR3B,CS30);
 
@@ -476,6 +499,7 @@ void SerialCommand::parse(char *com){
     CLKPR=0x08;           // BOARD MUST BE RESET TO RESUME NORMAL OPERATIONS
 
     break;
+#endif
 
 /***** WRITE A DCC PACKET TO ONE OF THE REGSITERS DRIVING THE MAIN OPERATIONS TRACK  ****/    
       
@@ -526,10 +550,16 @@ void SerialCommand::parse(char *com){
  *     returns: <f MEM>
  *     where MEM is the number of free bytes remaining in the Arduino's SRAM
  */
+      #ifdef ESP32
+        INTERFACE.print("<f");
+        INTERFACE.print(ESP.getFreeHeap(),DEC);
+        INTERFACE.print(">");
+      #else
       int v; 
-      INTERFACE.print("<f");
-      INTERFACE.print((int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval));
-      INTERFACE.print(">");
+        INTERFACE.print("<f");
+        INTERFACE.print((int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval));
+        INTERFACE.print(">");
+      #endif
       break;
 
 /***** LISTS BIT CONTENTS OF ALL INTERNAL DCC PACKET REGISTERS  ****/        

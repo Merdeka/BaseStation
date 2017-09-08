@@ -1,6 +1,6 @@
 /**********************************************************************
 
-DCCpp_Uno.h
+DCCpp.h
 COPYRIGHT (c) 2013-2016 Gregg E. Berman
 
 Part of DCC++ BASE STATION for the Arduino
@@ -9,8 +9,8 @@ Part of DCC++ BASE STATION for the Arduino
 
 #include "Config.h"
 
-#ifndef DCCpp_Uno_h
-#define DCCpp_Uno_h
+#ifndef DCCpp_h
+#define DCCpp_h
 
 /////////////////////////////////////////////////////////////////////////////////////
 // RELEASE VERSION
@@ -24,10 +24,12 @@ Part of DCC++ BASE STATION for the Arduino
 
 #ifdef ARDUINO_AVR_MEGA                   // is using Mega 1280, define as Mega 2560 (pinouts and functionality are identical)
   #define ARDUINO_AVR_MEGA2560
+  #define AVR
 #endif
 
 #if defined  ARDUINO_AVR_UNO
 
+  #define AVR
   #define ARDUINO_TYPE    "UNO"
 
   #define DCC_SIGNAL_PIN_MAIN 10          // Ardunio Uno  - uses OC1B
@@ -41,14 +43,22 @@ Part of DCC++ BASE STATION for the Arduino
 
 #elif defined  ARDUINO_AVR_MEGA2560
 
+  #define AVR
   #define ARDUINO_TYPE    "MEGA"
 
   #define DCC_SIGNAL_PIN_MAIN 12          // Arduino Mega - uses OC1B
   #define DCC_SIGNAL_PIN_PROG 2           // Arduino Mega - uses OC3B
 
+#elif defined  ESP32
+
+  #define ARDUINO_TYPE    "ESP32"
+
+  #define DCC_SIGNAL_PIN_MAIN 2
+  #define DCC_SIGNAL_PIN_PROG 4          
+
 #else
 
-  #error CANNOT COMPILE - DCC++ ONLY WORKS WITH AN ARDUINO UNO OR AN ARDUINO MEGA 1280/2560
+  #error CANNOT COMPILE - DCC++ ONLY WORKS WITH AN ARDUINO UNO, ARDUINO MEGA 1280/2560 OR AN ESP32
 
 #endif
 
@@ -82,6 +92,19 @@ Part of DCC++ BASE STATION for the Arduino
   #define DIRECTION_MOTOR_CHANNEL_PIN_A 7
   #define DIRECTION_MOTOR_CHANNEL_PIN_B 8
 
+#elif MOTOR_SHIELD_TYPE == 2
+
+  #define MOTOR_SHIELD_NAME "MIC4426 MOSFET DRIVER"
+  
+  #define SIGNAL_ENABLE_PIN_MAIN 2
+  #define SIGNAL_ENABLE_PIN_PROG 4
+
+  #define CURRENT_MONITOR_PIN_MAIN 5
+  #define CURRENT_MONITOR_PIN_PROG 6
+
+  #define DIRECTION_MOTOR_CHANNEL_PIN_A 7
+  #define DIRECTION_MOTOR_CHANNEL_PIN_B 8
+
 #else
 
   #error CANNOT COMPILE - PLEASE SELECT A PROPER MOTOR SHIELD TYPE
@@ -102,6 +125,12 @@ Part of DCC++ BASE STATION for the Arduino
   #define COMM_TYPE 1
   #define INTERFACE eServer
   #define SDCARD_CS 4
+
+#elif COMM_INTERFACE == 4
+
+  #define COMM_TYPE 2
+  #include <WiFi.h>
+  extern WiFiServer INTERFACE;
   
 #else
 

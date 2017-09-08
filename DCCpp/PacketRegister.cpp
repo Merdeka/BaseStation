@@ -7,7 +7,7 @@ Part of DCC++ BASE STATION for the Arduino
 
 **********************************************************************/
 
-#include "DCCpp_Uno.h"
+#include "DCCpp.h"
 #include "PacketRegister.h"
 #include "Comm.h"
 
@@ -89,7 +89,12 @@ void RegisterList::loadPacket(int nReg, byte *b, int nBytes, int nRepeat, int pr
   
   nextReg=r;
   this->nRepeat=nRepeat;
+
+#ifdef ESP32
+  maxLoadedReg=_max(maxLoadedReg,nextReg);
+#else
   maxLoadedReg=max(maxLoadedReg,nextReg);
+#endif
   
   if(printFlag && SHOW_PACKETS)       // for debugging purposes
     printPacket(nReg,b,nBytes,nRepeat);  
