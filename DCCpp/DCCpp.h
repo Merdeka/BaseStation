@@ -129,8 +129,7 @@ Part of DCC++ BASE STATION for the Arduino
 #elif COMM_INTERFACE == 4
 
   #define COMM_TYPE 2
-  #include <WiFi.h>
-  extern WiFiServer INTERFACE;
+  #define INTERFACE wServer
   
 #else
 

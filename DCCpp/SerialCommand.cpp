@@ -75,23 +75,27 @@ void SerialCommand::process(){
 
   #elif COMM_TYPE == 2
 
-    WiFiClient client=INTERFACE.available();
+    WiFiClient client = INTERFACE.available();
 
     if(client){
-      while(client.connected() && client.available()){        // while there is data on the network
-      c=client.read();
-      if(c=='<')                    // start of new command
-        sprintf(commandString,"");
-      else if(c=='>')               // end of new command
-        parse(commandString);                    
-      else if(strlen(commandString)<MAX_COMMAND_LENGTH)    // if comandString still has space, append character just read from network
-        sprintf(commandString,"%s%c",commandString,c);     // otherwise, character is ignored (but continue to look for '<' or '>')
+      while(client.connected()) {
+        if(client.available()){                                   // while there is data on the network
+          c=client.read();
+          if(c=='<') {                                            // start of new command
+            sprintf(commandString,"");
+          } else if(c=='>') {                                     // end of new command
+            parse(commandString);
+            INTERFACE.print("TEST");
+            INTERFACE.write("TEST");                      
+          } else if(strlen(commandString)<MAX_COMMAND_LENGTH) {   // if comandString still has space, append character just read from network
+            sprintf(commandString,"%s%c",commandString,c);        // otherwise, character is ignored (but continue to look for '<' or '>')
+          }
+        }
       } // while
     }
-  
 
   #endif
-
+  
 } // SerialCommand:process
    
 ///////////////////////////////////////////////////////////////////////////////
@@ -370,6 +374,9 @@ void SerialCommand::parse(char *com){
         INTERFACE.print("<p0>");
       else
         INTERFACE.print("<p1>");
+
+      Serial.println("TIMO");
+      INTERFACE.print("TIMO");
 
       for(int i=1;i<=MAX_MAIN_REGISTERS;i++){
         if(mRegs->speedTable[i]==0)

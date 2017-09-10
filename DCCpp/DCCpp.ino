@@ -179,9 +179,14 @@ DCC++ BASE STATION is configured through the Config.h file that contains all use
 #include "Comm.h"
 
 #ifdef ESP32
-  
-  const char* _SSID = "SSID";
-  const char* _PASSWORD = "Password";
+
+  hw_timer_t * timer = NULL;
+  bool first = true;
+
+  void inline dccISR (void);
+
+  const char* _SSID = "ssid";
+  const char* _PASSWORD = "password";
 
   // Multicast
   IPAddress multicastAddress(224,0,0,1);
@@ -243,17 +248,21 @@ void setup(){
 
   EEStore::init();                                         // initialize and load Turnout and Sensor definitions stored in EEPROM
 
+#ifdef AVR
   pinMode(A5,INPUT);                                       // if pin A5 is grounded upon start-up, print system configuration and halt
   digitalWrite(A5,HIGH);
   if(!digitalRead(A5))
     showConfiguration();
+#endif
 
 #ifdef ESP32
-  Serial.print("<iDCC++ BASE STATION FOR ESP32 ");        // Print Status to Serial Line regardless of COMM_TYPE setting so use can open Serial Monitor and check configurtion 
+  Serial.print("<iDCC++ BASE STATION FOR ESP32");        // Print Status to Serial Line regardless of COMM_TYPE setting so use can open Serial Monitor and check configurtion 
+  pinMode(5, OUTPUT);
+  pinMode(4, OUTPUT);
 #else
   Serial.print("<iDCC++ BASE STATION FOR ARDUINO ");      // Print Status to Serial Line regardless of COMM_TYPE setting so use can open Serial Monitor and check configurtion 
-#endif
   Serial.print(ARDUINO_TYPE);
+#endif
   Serial.print(" / ");
   Serial.print(MOTOR_SHIELD_NAME);
   Serial.print(": V-");
@@ -285,6 +294,7 @@ void setup(){
     Serial.println(WiFi.localIP());
 
     INTERFACE.begin();
+
   #endif
 
   #if COMM_TYPE == 1
@@ -431,7 +441,27 @@ void setup(){
         
     bitSet(TIMSK3,OCIE3B);    // enable interrupt vector for Timer 3 Output Compare B Match (OCR3B)
       
-  #endif  
+  #endif
+
+#elif ESP32
+
+    // Use 1st timer of 4 (counted from zero).
+    // Set 80 divider for prescaler (see ESP32 Technical Reference Manual for more
+    // info).
+    timer = timerBegin(0, 80, true);
+  
+    // Attach onTimer function to our timer.
+    timerAttachInterrupt(timer, &dccISR, true);
+    
+    // Set alarm to call onTimer function every second (value in microseconds).
+    // Repeat the alarm (third parameter)
+    timerAlarmWrite(timer, 104, true);
+  
+    // Start an alarm
+    timerAlarmEnable(timer);
+
+    mainRegs.loadPacket(1,RegisterList::idlePacket,2,0);    // load idle packet into register 1
+    
 #endif
 
 } // setup
@@ -539,7 +569,7 @@ void showConfiguration(){
   Serial.print(" ");
   Serial.print(__TIME__);
 
-  Serial.print("\nARDUINO:      ");
+  Serial.print("\nCPU:      ");
   Serial.print(ARDUINO_TYPE);
 
   Serial.print("\n\nMOTOR SHIELD: ");
@@ -598,12 +628,74 @@ void showConfiguration(){
     #else
       Serial.print(" (DHCP)");
     #endif
+
+  #elif COMM_TYPE == 2
+    Serial.print(COMM_SHIELD_NAME);
+    
+    WiFi.mode(WIFI_STA);                        // setting up Station AP
+    WiFi.begin(_SSID, _PASSWORD);               // Start networking using DHCP to get an IP Address
   
   #endif
   Serial.print("\n\nPROGRAM HALTED - PLEASE RESTART ARDUINO");
 
   while(true);
 }
+
+#ifdef ESP32
+
+void inline dccISR (void){
+
+  if(mainRegs.currentBit==mainRegs.currentReg->activePacket->nBits){
+    mainRegs.currentBit=0;
+
+    if(mainRegs.nRepeat>0 && mainRegs.currentReg==mainRegs.reg){
+      mainRegs.nRepeat--;     
+    } else if(mainRegs.nextReg!=NULL){   
+      mainRegs.currentReg=mainRegs.nextReg;
+      mainRegs.nextReg=NULL;
+      mainRegs.tempPacket=mainRegs.currentReg->activePacket;
+      mainRegs.currentReg->activePacket=mainRegs.currentReg->updatePacket;
+      mainRegs.currentReg->updatePacket=mainRegs.tempPacket;
+    } else {
+        if(mainRegs.currentReg==mainRegs.maxLoadedReg)
+          mainRegs.currentReg=mainRegs.reg;
+        mainRegs.currentReg++;
+    } 
+  }
+  
+  if(mainRegs.currentReg->activePacket->buf[mainRegs.currentBit/8] & mainRegs.bitMask[mainRegs.currentBit%8]){
+    timerAlarmWrite(timer, 56, true);
+    timerAlarmEnable(timer);
+    //timer0_write(ESP.getCycleCount() + 56 * 80); // 160 when running at 160mhz
+    if(first == true) {
+      digitalWrite(5, HIGH);
+      digitalWrite(4, LOW);
+      first = false;
+    } else {
+      digitalWrite(5, LOW);
+      digitalWrite(4, HIGH);
+      first = true;
+      mainRegs.currentBit++;
+    }
+  } else {
+    timerAlarmWrite(timer, 98, true);
+    timerAlarmEnable(timer);
+    //timer0_write(ESP.getCycleCount() + 98 * 80); // 160 when running at 160mhz
+    if(first == true) {
+      digitalWrite(5, HIGH);
+      digitalWrite(4, LOW);
+      first = false;
+    } else {
+      digitalWrite(5, LOW);
+      digitalWrite(4, HIGH);
+      first = true;
+      mainRegs.currentBit++;
+    }
+  }
+  
+}
+
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 

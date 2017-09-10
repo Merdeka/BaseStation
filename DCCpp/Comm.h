@@ -28,9 +28,15 @@ Part of DCC++ BASE STATION for the Arduino
     #include <EthernetV2_0.h>     // https://github.com/Seeed-Studio/Ethernet_Shield_W5200
     extern EthernetServer INTERFACE;
 
-  #elif COMM_INTERFACE == 4
-    #define COMM_SHIELD_NAME      "ESP32 WIFI"
+  #endif
 
+#elif COMM_TYPE == 2
+
+  #if COMM_INTERFACE == 4
+    #define COMM_SHIELD_NAME      "ESP32 WIFI"
+    #include <WiFi.h>
+    extern WiFiServer INTERFACE;
+    
   #endif
 
 #endif  
